@@ -63,6 +63,7 @@ const NetworkWalletProviders = ({walletProvidersDialogOpen, handleWalletProvider
   const handleConnectWallet = () => {
     if (selectedWallet && selectedNetwork) {
       const walletprovider = `${selectedWallet}_${selectedNetwork}`
+      
       connectWallet(walletprovider)
     }
   }
