@@ -140,6 +140,7 @@ export function useWalletConnector () {
   }
 
   const loginWallet = (connector) => {
+    console.log(connector)
     if (connector) {
       activate(connector, async (error) => {
         if (error instanceof UnsupportedChainIdError) {

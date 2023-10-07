@@ -83,12 +83,12 @@ const NetworkWalletProviders = ({walletProvidersDialogOpen, handleWalletProvider
       break;
       case "injected_bsc":
         setWalletProvider("injected_bsc");
-        setNet(1);
+        setNet(0);
         loginMetamask();
       break;
       case "walletconnect_bsc":
         setWalletProvider("walletconnect_bsc");
-        setNet(1);
+        setNet(0);
         loginWalletConnect();
       break;
       default:

@@ -69,14 +69,10 @@ const Opened = () => {
   const {account, library} = useWeb3React();
 
   useEffect(() => {
-    if(!library) {
+    if(!library || !library.provider) {
       Init()
-      return;
-    }
 
-    if(!library.provider) {
-      Init()
-      return
+      return;
     }
 
     //console.log(parseInt(library.provider.chainId), "net chain id");
@@ -89,7 +85,7 @@ const Opened = () => {
     } else {
       setOpenAlert(true)
       setAlertMsg('Selected chain is unrecognized')
-    }   
+    }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, library])
@@ -101,11 +97,89 @@ const Opened = () => {
     setStatus([])
     setBuyerInfo([])
     setPresaleState('')
+
+    getPresaleInfo();
   }
 
   const getContract = (abi, address, signer = null) => {
     const signerOrProvider = signer
     return new ethers.Contract(address, abi, signerOrProvider)
+  }
+
+  const getPresaleInfo = async () => {
+    let presalecontract;
+    const provider = new ethers.providers.JsonRpcProvider('https://bsc-testnet.publicnode.com');
+    presalecontract = getContract(PRESALE_ABI, PresaleContractAddress[1], provider)
+   
+    let chainSuffix = ""
+    chainSuffix = "BNB"
+
+    let tokenrate;
+    try {
+      tokenrate = await presalecontract.token_rate();
+    } catch (error) {
+      setOpenAlert(true)
+      setAlertMsg('Get token rate Information Error')
+      return null;
+    }
+
+    let presaleinfo;
+    try {
+      presaleinfo = await presalecontract.presale_info();
+    } catch (error) {
+      setOpenAlert(true)
+      setAlertMsg('Get Presale Information Error')
+      return null;
+    }
+
+    const soft_starttime = `${moment.utc(parseInt(presaleinfo.soft_start)*1000).format('Do of MMM, h A')} UTC`
+    const soft_endtime = `${moment.utc(parseInt(presaleinfo.soft_end)*1000).format('Do of MMM, h A')} UTC`
+    const public_starttime = `${moment.utc(parseInt(presaleinfo.public_start)*1000).format('Do of MMM, h A')} UTC`
+    const public_endtime = `${moment.utc(parseInt(presaleinfo.public_end)*1000).format('Do of MMM, h A')} UTC`
+
+    setPresaleInfo([
+      {id: "Token Rate:", val: 1/tokenrate + " BNB"},
+      {id: "Softcap:", val: ethers.utils.formatUnits(presaleinfo.softcap, 18).toString() + " " + chainSuffix},
+      {id: "Hardcap:", val: ethers.utils.formatUnits(presaleinfo.hardcap, 18).toString() + " " + chainSuffix},
+      {id: "Buy min:", val: ethers.utils.formatUnits(presaleinfo.raise_min, 18).toString() + " " + chainSuffix},
+      {id: "Buy max:", val: ethers.utils.formatUnits(presaleinfo.raise_max, 18).toString() + " " + chainSuffix},
+      {id: "Soft Presale Start:", val: soft_starttime},
+      {id: "Soft Presale End:", val: soft_endtime},
+      {id: "Public Presale Start:", val: public_starttime},
+      {id: "Public Presale End:", val: public_endtime},
+    ])
+
+    let tokeninfoarr;
+    try {
+      tokeninfoarr = await presalecontract.tokeninfo();
+    } catch (error) {
+      setOpenAlert(true)
+      setAlertMsg('Get Token Information Error')
+      return null;
+    }
+    
+    let sale_supply = ethers.utils.formatUnits(tokeninfoarr.totalsupply, tokeninfoarr.decimal) / 100 * 10;
+    setTokenInfo([
+      {id:"Token Name:", val:tokeninfoarr.name},
+      {id:"Token Symbol:", val:tokeninfoarr.symbol},
+      {id:"Token Decimal:", val:parseInt(tokeninfoarr.decimal)},
+      {id: "Address:", val: presaleinfo.sale_token},
+      {id:"Sale Supply:", val: sale_supply + " " + tokeninfoarr.symbol},
+    ])
+    
+    let status;
+    try {
+      status = await presalecontract.status();
+    } catch (error) {
+      setOpenAlert(true)
+      setAlertMsg('Get Status Information Error')
+      return null;
+    }
+
+    setStatus([
+      {id: "Raised Amount", val: ethers.utils.formatUnits(status.raised_amount, 18).toString() + " " + chainSuffix},
+      {id: "Sold Amount", val: ethers.utils.formatUnits(status.sold_amount, tokeninfoarr.decimal).toString() + " " + tokeninfoarr.symbol}
+    ])
   }
 
   const getInfo = async () => {
