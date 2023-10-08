@@ -18,7 +18,8 @@ import moment from 'moment';
 
 const PresaleContractAddress = [
   "",
-  "0xBb569C738f56348B21a84D520f679fe41Fd01cc5"
+  //"0xBb569C738f56348B21a84D520f679fe41Fd01cc5",
+  "0x4Af30f8e90f4Ac56e90521D1ea125599B7C1ce8B"
 ];
 
 // 0: ropsten, 1: bsc testnet
@@ -71,7 +72,7 @@ const Opened = () => {
   useEffect(() => {
     if(!library || !library.provider) {
       Init()
-
+      
       return;
     }
 
@@ -99,6 +100,9 @@ const Opened = () => {
     setPresaleState('')
 
     getPresaleInfo();
+
+    
+
   }
 
   const getContract = (abi, address, signer = null) => {
@@ -110,48 +114,37 @@ const Opened = () => {
     let presalecontract;
     const provider = new ethers.providers.JsonRpcProvider('https://bsc-testnet.publicnode.com');
     presalecontract = getContract(PRESALE_ABI, PresaleContractAddress[1], provider)
-   
+    console.log(presalecontract)
+    
     let chainSuffix = ""
     chainSuffix = "BNB"
-
-    let tokenrate;
-    try {
-      tokenrate = await presalecontract.token_rate();
-    } catch (error) {
-      setOpenAlert(true)
-      setAlertMsg('Get token rate Information Error')
-      return null;
-    }
-
     let presaleinfo;
     try {
       presaleinfo = await presalecontract.presale_info();
     } catch (error) {
+      console.log(error)
       setOpenAlert(true)
       setAlertMsg('Get Presale Information Error')
       return null;
     }
 
-    const soft_starttime = `${moment.utc(parseInt(presaleinfo.soft_start)*1000).format('Do of MMM, h A')} UTC`
-    const soft_endtime = `${moment.utc(parseInt(presaleinfo.soft_end)*1000).format('Do of MMM, h A')} UTC`
-    const public_starttime = `${moment.utc(parseInt(presaleinfo.public_start)*1000).format('Do of MMM, h A')} UTC`
-    const public_endtime = `${moment.utc(parseInt(presaleinfo.public_end)*1000).format('Do of MMM, h A')} UTC`
-
+    const public_starttime = `${moment.utc(parseInt(presaleinfo.presale_start )*1000).format('Do of MMM, h A')} UTC`
+    const public_endtime = `${moment.utc(parseInt(presaleinfo.presale_end )*1000).format('Do of MMM, h A')} UTC`
+    const tokenrate = presaleinfo.token_rate;
     setPresaleInfo([
       {id: "Token Rate:", val: 1/tokenrate + " BNB"},
       {id: "Softcap:", val: ethers.utils.formatUnits(presaleinfo.softcap, 18).toString() + " " + chainSuffix},
       {id: "Hardcap:", val: ethers.utils.formatUnits(presaleinfo.hardcap, 18).toString() + " " + chainSuffix},
       {id: "Buy min:", val: ethers.utils.formatUnits(presaleinfo.raise_min, 18).toString() + " " + chainSuffix},
       {id: "Buy max:", val: ethers.utils.formatUnits(presaleinfo.raise_max, 18).toString() + " " + chainSuffix},
-      {id: "Soft Presale Start:", val: soft_starttime},
-      {id: "Soft Presale End:", val: soft_endtime},
+      
       {id: "Public Presale Start:", val: public_starttime},
       {id: "Public Presale End:", val: public_endtime},
     ])
-
     let tokeninfoarr;
     try {
       tokeninfoarr = await presalecontract.tokeninfo();
+      console.log(tokeninfoarr)
     } catch (error) {
       setOpenAlert(true)
       setAlertMsg('Get Token Information Error')
@@ -180,6 +173,25 @@ const Opened = () => {
       {id: "Raised Amount", val: ethers.utils.formatUnits(status.raised_amount, 18).toString() + " " + chainSuffix},
       {id: "Sold Amount", val: ethers.utils.formatUnits(status.sold_amount, tokeninfoarr.decimal).toString() + " " + tokeninfoarr.symbol}
     ])
+
+    const state = await getPresaleStatus(presalecontract)
+    switch(parseInt(state)) {
+      case 1:
+        setPresaleState("Public Presale Active")
+        break;
+      case 0:
+        setPresaleState("Waiting to start")
+        break;
+      case 2:
+        setPresaleState("Success")
+        break;
+      case 3:
+        setPresaleState("Failed")
+        break;
+      default:
+        setPresaleState("unknown state")
+      break;
+    }
   }
 
   const getInfo = async () => {
@@ -205,7 +217,7 @@ const Opened = () => {
 
     let tokenrate;
     try {
-      tokenrate = await presalecontract.token_rate();
+      tokenrate = (await presalecontract.presale_info()).token_rate;
     } catch (error) {
       setOpenAlert(true)
       setAlertMsg('Get token rate Information Error')
@@ -221,10 +233,8 @@ const Opened = () => {
       return null;
     }
 
-    const soft_starttime = `${moment.utc(parseInt(presaleinfo.soft_start)*1000).format('Do of MMM, h A')} UTC`
-    const soft_endtime = `${moment.utc(parseInt(presaleinfo.soft_end)*1000).format('Do of MMM, h A')} UTC`
-    const public_starttime = `${moment.utc(parseInt(presaleinfo.public_start)*1000).format('Do of MMM, h A')} UTC`
-    const public_endtime = `${moment.utc(parseInt(presaleinfo.public_end)*1000).format('Do of MMM, h A')} UTC`
+    const public_starttime = `${moment.utc(parseInt(presaleinfo.presale_start)*1000).format('Do of MMM, h A')} UTC`
+    const public_endtime = `${moment.utc(parseInt(presaleinfo.presale_end)*1000).format('Do of MMM, h A')} UTC`
 
     setPresaleInfo([
       {id: "Token Rate:", val: 1/tokenrate + " BNB"},
@@ -232,8 +242,6 @@ const Opened = () => {
       {id: "Hardcap:", val: ethers.utils.formatUnits(presaleinfo.hardcap, 18).toString() + " " + chainSuffix},
       {id: "Buy min:", val: ethers.utils.formatUnits(presaleinfo.raise_min, 18).toString() + " " + chainSuffix},
       {id: "Buy max:", val: ethers.utils.formatUnits(presaleinfo.raise_max, 18).toString() + " " + chainSuffix},
-      {id: "Soft Presale Start:", val: soft_starttime},
-      {id: "Soft Presale End:", val: soft_endtime},
       {id: "Public Presale Start:", val: public_starttime},
       {id: "Public Presale End:", val: public_endtime},
     ])
@@ -291,16 +299,13 @@ const Opened = () => {
       case 1:
         setPresaleState("Public Presale Active")
         break;
+      case 0:
+        setPresaleState("Waiting to start")
+        break;
       case 2:
-        setPresaleState("Stopped")
-        break;
-      case 3:
-        setPresaleState("Soft Presale Active")
-        break;
-      case 4:
         setPresaleState("Success")
         break;
-      case 5:
+      case 3:
         setPresaleState("Failed")
         break;
       default:
@@ -442,9 +447,6 @@ const Opened = () => {
   const actionButton = () => {
     let label;
     switch(presaleState) {
-      case 'Soft Presale Active':
-        label = 'Buy'
-        break;
       case 'Public Presale Active':
           label = 'Buy'
           break;
@@ -460,10 +462,6 @@ const Opened = () => {
 
     const execFunc = async () => {
       switch(presaleState) {
-        case 'Soft Presale Active':
-          label = 'Buy'
-          Deposit(amountToBuy)
-          break;
         case 'Public Presale Active':
           label = 'Buy'
           Deposit(amountToBuy)
@@ -481,16 +479,20 @@ const Opened = () => {
       }
     }
 
-    return (
-      <Button
-        fullWidth
-        onClick={
-          () => execFunc()
-        }
-        >
-        {label}
-      </Button>
-    )
+    if(library)
+      return (
+        
+        <Button
+          fullWidth
+          onClick={
+            () => execFunc()
+          }
+          >
+          {label}
+        </Button>
+      )
+    else 
+          return (<></>)
   }
 
   const handleStateChipColor = (state) => {
@@ -529,24 +531,7 @@ const Opened = () => {
         msg={alertMsg}
         
       />
-      {presaleState === "Soft Presale Active" && (
-              <Typography 
-              color="text.primary"
-              sx={{ fontWeight: 'bold', mb: 1, textAlign: 'center' }}
-              variant="h6"
-            >
-              Soft sale started
-          </Typography>
-      )}
-      {presaleState === "Stopped" && (
-              <Typography 
-              color="text.primary"
-              sx={{ fontWeight: 'bold', mb: 1, textAlign: 'center' }}
-              variant="h6"
-            >
-              Soft sale ended, public presale will start soon.
-          </Typography>
-      )}
+      
       {presaleState === "Public Presale Active" && (
               <Typography 
               color="text.primary"
@@ -601,72 +586,60 @@ const Opened = () => {
                 </Stack>
               ))}
               <Divider light textAlign="left" sx={{mt: 3}}><Chip label="Pre-sale Status" /></Divider>
+              
               {status.map((item, i) => (
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2} key={i}>
                   <CardLabel text={item.id} />
                   <CardValue text={item.val} />
                 </Stack>
               ))}
-               <Divider light textAlign="left" sx={{mt: 3}}><Chip label="Buyer Information" /></Divider>
-              {buyerInfo.map((item, i) => (
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2} key={i}>
-                  <CardLabel text={item.id} />
-                  <CardValue text={item.val} />
-                </Stack>
-              ))}
-              {presaleState && (
-                (<Stack direction="row" justifyContent="flex-end">
-                  <Chip
-                    label={presaleState} 
-                    color={handleStateChipColor(presaleState)} 
-                    sx={{letterSpacing: 1, fontWeight: 500, mt: 2}}
-                  />
-                </Stack>)
-              )}
-              {presaleState === "Public Presale Active" && (
-                <Fragment>
-                  <Typography variant='caption' display="block" sx={{fontWeight: 700, mb: 1}}>Buy ELO Token</Typography>
-                  <TextField
-                    type="number"
-                    id="amountToBuy"
-                    label="Amount to Buy"
-                    variant="standard"
-                    value={amountToBuy}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    onChange={(e) => setAmountToBuy(e.target.value)}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">{handleSelectedChain()}</InputAdornment>,
-                      autoComplete: "off"
-                    }}
-                    fullWidth
-                    sx={{mb: 1}}
-                  />
-                </Fragment>
-              )}
-              {presaleState === "Soft Presale Active" && (
-                <Fragment>
-                  <Typography variant='caption' display="block" sx={{fontWeight: 700, mb: 1}}>Buy ELO Token</Typography>
-                  <TextField
-                    type="number"
-                    id="amountToBuy"
-                    label="Amount to Buy"
-                    variant="standard"
-                    value={amountToBuy}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    onChange={(e) => setAmountToBuy(e.target.value)}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">{handleSelectedChain()}</InputAdornment>,
-                      autoComplete: "off"
-                    }}
-                    fullWidth
-                    sx={{mb: 1}}
-                  />
-                </Fragment>
-              )}
+                { library && 
+                (
+                  <>
+                  <Divider light textAlign="left" sx={{mt: 3}}><Chip label="Buyer Information" /></Divider>
+
+                  {buyerInfo.map((item, i) => (
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2} key={i}>
+                    <CardLabel text={item.id} />
+                    <CardValue text={item.val} />
+                  </Stack>
+                ))}
+                {presaleState && (
+                  (<Stack direction="row" justifyContent="flex-end">
+                    <Chip
+                      label={presaleState} 
+                      color={handleStateChipColor(presaleState)} 
+                      sx={{letterSpacing: 1, fontWeight: 500, mt: 2}}
+                    />
+                  </Stack>)
+                )}
+                {presaleState === "Public Presale Active" && (
+                  <Fragment>
+                    <Typography variant='caption' display="block" sx={{fontWeight: 700, mb: 1}}>Buy ELO Token</Typography>
+                    <TextField
+                      type="number"
+                      id="amountToBuy"
+                      label="Amount to Buy"
+                      variant="standard"
+                      value={amountToBuy}
+                      InputLabelProps={{
+                        shrink: true,
+                      }}
+                      onChange={(e) => setAmountToBuy(e.target.value)}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">{handleSelectedChain()}</InputAdornment>,
+                        autoComplete: "off"
+                      }}
+                      fullWidth
+                      sx={{mb: 1}}
+                    />
+                  </Fragment>
+                  
+                )}
+                </>
+                )
+              }
+              
             </CardContent>
             <CardActions>
               {actionButton()}
