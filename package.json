@@ -50,12 +50,12 @@
     "yarn": "^1.22.17"
   },
   "scripts": {
-    "start": "npm run config | react-scripts --openssl-legacy-provider start",
-    "build": "npm run config | react-scripts --openssl-legacy-provider build",
+    "start": "react-scripts --openssl-legacy-provider start",
+    "build": "react-scripts --openssl-legacy-provider build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "devchain": "node Truffle/scripts/devChain.js",
-    "config": "node src/setupTests.js",
+    
     "connect": "moralis-admin-cli connect-local-devchain",
     "watch:events": "moralis-admin-cli add-contract",
     "deploy": "node Truffle/scripts/deployContract.js"
